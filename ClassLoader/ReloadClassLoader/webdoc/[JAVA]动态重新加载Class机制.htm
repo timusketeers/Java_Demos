@@ -1,0 +1,433 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<!-- saved from url=(0038)http://vivisidea.iteye.com/blog/662620 -->
+<html xmlns="http://www.w3.org/1999/xhtml" xml:lang="zh-CN" dir="ltr"><head><meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+    
+    <title>[JAVA]动态重新加载Class机制 - My Tech Disk - ITeye技术网站</title>
+    <meta name="description" content="Java动态重新加载Class     项目中使用到了动态重新加载Class的机制，作用是让一些代码上线之前可以在线上环境测试一下，当然，这是非常不好的测试机制，我刚来的时候也为这种机制感到惊讶—怎么可以在线上环境运行测试代码！后来经过了解，这么做的原因有以下两个： 有些代码没有办法在本地进行测试，本地没有线上的环境 我们弱到连测试机都没有（这是重点）     既然我们连测试机都没有，那么我就觉得我 ...">
+    <meta name="keywords" content="Java, C, C++, C#, 虚拟机 [JAVA]动态重新加载Class机制">
+    <link rel="shortcut icon" href="http://vivisidea.iteye.com/images/favicon.ico" type="image/x-icon">
+    <link rel="search" type="application/opensearchdescription+xml" href="http://vivisidea.iteye.com/open_search.xml" title="ITeye">
+    <link href="http://vivisidea.iteye.com/rss" rel="alternate" title="My Tech Disk" type="application/rss+xml">
+    <link href="./[JAVA]动态重新加载Class机制_files/blog.css" media="screen" rel="stylesheet" type="text/css">
+<link href="./[JAVA]动态重新加载Class机制_files/white.css" media="screen" rel="stylesheet" type="text/css">
+    <script type="text/javascript" async="" src="./[JAVA]动态重新加载Class机制_files/ga.js"></script><script src="./[JAVA]动态重新加载Class机制_files/application.js" type="text/javascript"></script>
+    <script type="text/javascript">
+
+  var _gaq = _gaq || [];
+  _gaq.push(['_setAccount', 'UA-535605-1']);
+  _gaq.push(['_setDomainName', 'iteye.com']);
+  _gaq.push(['_trackPageview']);
+
+  (function() {
+    var ga = document.createElement('script'); ga.type = 'text/javascript'; ga.async = true;
+    ga.src = ('https:' == document.location.protocol ? 'https://ssl' : 'http://www') + '.google-analytics.com/ga.js';
+    var s = document.getElementsByTagName('script')[0]; s.parentNode.insertBefore(ga, s);
+  })();
+
+</script>
+
+
+      <link href="./[JAVA]动态重新加载Class机制_files/SyntaxHighlighter.css" media="screen" rel="stylesheet" type="text/css">
+  <script src="./[JAVA]动态重新加载Class机制_files/shCoreCommon.js" type="text/javascript"></script>
+<script src="./[JAVA]动态重新加载Class机制_files/hotkey.js" type="text/javascript"></script>
+  <script src="./[JAVA]动态重新加载Class机制_files/code_favorites.js" type="text/javascript"></script>
+<script src="./[JAVA]动态重新加载Class机制_files/weiboshare.js" type="text/javascript"></script>
+  <style type="text/css">.dp-j .annotation { color: #646464; }.dp-j .number { color: #C00000; }</style><style type="text/css">.dp-j .annotation { color: #646464; }.dp-j .number { color: #C00000; }</style><style type="text/css">.dp-j .annotation { color: #646464; }.dp-j .number { color: #C00000; }</style></head>
+  <body style="">
+    <div id="header">
+      <div id="blog_site_nav">
+  <a href="http://www.iteye.com/" class="homepage">首页</a>
+  <a href="http://www.iteye.com/news">资讯</a>
+  <a href="http://www.iteye.com/magazines">精华</a>
+  <a href="http://www.iteye.com/forums">论坛</a>
+  <a href="http://www.iteye.com/ask">问答</a>
+  <a href="http://www.iteye.com/blogs">博客</a>
+  <a href="http://www.iteye.com/blogs/subjects">专栏</a>
+  <a href="http://www.iteye.com/groups">群组</a>
+  <a href="http://vivisidea.iteye.com/blog/662620#" onclick="return false;" id="msna"><u>更多</u> <small>▼</small></a>
+  <div class="quick_menu" style="display:none;">
+    <a target="_blank" href="http://job.iteye.com/iteye">招聘</a>
+    <a href="http://www.iteye.com/search">搜索</a>
+  </div>
+</div>
+
+      <div id="user_nav">
+      <a href="http://vivisidea.iteye.com/login" class="welcome" title="登录">您还未登录 !</a>
+    <a href="http://vivisidea.iteye.com/login">登录</a>
+    <a href="http://vivisidea.iteye.com/signup" class="nobg">注册</a>
+  </div>
+
+    </div>
+
+    <div id="page">
+      <div id="branding" class="clearfix">
+        <div id="blog_name">
+          <h1><a href="http://vivisidea.iteye.com/">My Tech Disk</a></h1>
+        </div>
+        <div id="fd"></div>
+        <div id="blog_navbar">
+          <ul>
+            <li class="blog_navbar_for"><a href="http://vivisidea.iteye.com/"><strong>博客</strong></a></li>
+            <li><a href="http://vivisidea.iteye.com/weibo">微博</a></li>
+            <li><a href="http://vivisidea.iteye.com/album">相册</a></li>
+            <li><a href="http://vivisidea.iteye.com/link">收藏</a></li>
+            <li><a href="http://vivisidea.iteye.com/blog/guest_book">留言</a></li>
+            <li><a href="http://vivisidea.iteye.com/blog/profile">关于我</a></li>
+          </ul>
+    
+          <div class="search">
+            <form action="http://vivisidea.iteye.com/blog/search" method="get">
+              <input class="search_text" id="query" name="query" style="margin-left: 10px;width: 110px;" type="text" value="">
+              <input class="submit_search" type="submit" value="">
+            </form>
+          </div> 
+          <div id="fd"></div>         
+        </div>
+      </div>
+      
+      <div id="content" class="clearfix">
+        <div id="main">
+          
+
+
+
+          
+
+
+<div class="h-entry" style="display:none">
+  <a href="http://vivisidea.iteye.com/" class="p-author" target="_blank">weiqiang.yang</a>
+</div>
+
+
+<div class="blog_main">
+  <div class="blog_title">
+    <h3>
+      <a href="./[JAVA]动态重新加载Class机制_files/[JAVA]动态重新加载Class机制.htm">[JAVA]动态重新加载Class机制</a>
+      <em class="actions">      </em>
+    </h3>
+    
+        <div class="news_tag"><a href="http://www.iteye.com/blogs/tag/Java">Java</a><a href="http://www.iteye.com/blogs/tag/C">C</a><a href="http://www.iteye.com/blogs/tag/C++">C++</a><a href="http://www.iteye.com/blogs/tag/C%23">C#</a><a href="http://www.iteye.com/blogs/tag/%E8%99%9A%E6%8B%9F%E6%9C%BA">虚拟机</a>&nbsp;</div>
+  </div>
+
+  <div id="blog_content" class="blog_content">
+    <strong>Java动态重新加载Class</strong>
+<br>
+<br>&nbsp;&nbsp;&nbsp; 项目中使用到了动态重新加载Class的机制，作用是让一些代码上线之前可以在线上环境测试一下，当然，这是非常不好的测试机制，我刚来的时候也为这种机制感到惊讶—怎么可以在线上环境运行测试代码！后来经过了解，这么做的原因有以下两个：
+<br><ul>
+<li>有些代码没有办法在本地进行测试，本地没有线上的环境
+</li><li>我们弱到连测试机都没有（这是重点）
+</li></ul>
+<br>&nbsp;&nbsp;&nbsp; 既然我们连测试机都没有，那么我就觉得我们的项目其实也没有想象中的重要，这么测就这么测吧~~
+<br>&nbsp;&nbsp;&nbsp; 之前对ClassLoader没啥概念，google到一篇文章，翻译了一下并且做了一些补充，加深记忆
+<br>原文地址：
+<br><div class="quote_title">引用</div><div class="quote_div">http://tutorials.jenkov.com/java-reflection/dynamic-class-loading-reloading.html#classloader</div>
+<br>---------------------------------------------------
+<br><strong>ClassLoader</strong>
+<br>&nbsp;&nbsp;&nbsp; 顾名思义，ClassLoader就是用来Load Class的，当一个Class被加载的时候，这个Class所引用到的所有Class也会被加载，而且这种加载是递归的，也就是说，如果A引用到B，B 引用到C，那么当A被加载的时候，B也会被加载，而B被加载的时候，C也会加载。如此递归直到所有需要的Class都加载好。
+<br>&nbsp;&nbsp;&nbsp; 常见的ClassLoader：
+<br><div class="quote_title">引用</div><div class="quote_div">* Bootstrap class loader：虚拟机运行时必须要用到的类的加载器，比如java.*。它通常是在虚拟机种用本地代码（如C）实现，在系统中用null表示。
+<br>* Extension class loader：负责加载ext目录下的Class。
+<br>* Application class loader：负责加载CLASSPATH上的类。</div>
+<br>
+<br><strong>ClassLoader的代理层次关系</strong>
+<br>&nbsp;&nbsp;&nbsp; ClassLoader是以层次关系组织起来的，当你创建一个标准的Java ClassLoader的时候，你必须提供一个父ClassLoader。当一个ClassLoader需要加载一个Class的时候，它首先会让父 ClassLoader去加载这个Class，如果父ClassLoader不能加载这个Class，那么当前的ClassLoader才会自己去加载。
+<br>&nbsp;&nbsp;&nbsp; ClassLoader加载Class的步骤：
+<br><ul>
+<li>检查这个Class是否已经被加载过了
+</li><li>如果没有被加载过，那么让父ClassLoader尝试去加载
+</li><li>如果父ClassLoader无法加载，那么尝试使用当前ClassLoader加载
+</li></ul>
+<br>&nbsp;&nbsp;&nbsp; 从ClassLoader加载Class的步骤可以得知，如果你需要动态重新加载一个Class，那么你的ClassLoader必须跟上述标准流程有所区别，需要动态加载的Class不能交给父ClassLoader，否则你自己的ClassLoader将没有机会去加载这个Class（因为正常情况下父ClassLoader总是能加载到你所请求的Class）。
+<br>&nbsp;&nbsp;&nbsp; 所以，如果你需要ClassLoader重新加载一个Class，重写findClass方法是起不到效果的，因为findClass在父 ClassLoader加载失败之后才会执行
+<br><div class="dp-highlighter" id=""><div class="bar"><div class="tools">Java代码 <embed wmode="transparent" src="/javascripts/syntaxhighlighter/clipboard_new.swf" width="14" height="15" flashvars="clipboard=%2F%2F%20First%2C%20check%20if%20the%20class%20has%20already%20been%20loaded%0A%20%20%20%20%20%20%20%20Class%20c%20%3D%20findLoadedClass(name)%3B%0A%20%20%20%20%20%20%20%20if%20(c%20%3D%3D%20null)%20%7B%0A%20%20%20%20%20%20%20%20try%20%7B%0A%20%20%20%20%20%20%20%20if%20(parent%20!%3D%20null)%20%7B%0A%20%20%20%20%20%20%20%20%20%20%20%20c%20%3D%20parent.loadClass(name%2C%20false)%3B%0A%20%20%20%20%20%20%20%20%7D%20else%20%7B%0A%20%20%20%20%20%20%20%20%20%20%20%20c%20%3D%20findBootstrapClass0(name)%3B%0A%20%20%20%20%20%20%20%20%7D%0A%20%20%20%20%20%20%20%20%7D%20catch%20(ClassNotFoundException%20e)%20%7B%0A%20%20%20%20%20%20%20%20%20%20%20%20%2F%2F%20If%20still%20not%20found%2C%20then%20invoke%20findClass%20in%20order%0A%20%20%20%20%20%20%20%20%20%20%20%20%2F%2F%20to%20find%20the%20class.%0A%20%20%20%20%20%20%20%20%20%20%20%20c%20%3D%20findClass(name)%3B%0A%20%20%20%20%20%20%20%20%7D%0A%20%20%20%20%7D" quality="high" allowscriptaccess="always" type="application/x-shockwave-flash" pluginspage="http://www.macromedia.com/go/getflashplayer">&nbsp;<a href="javascript:void()" title="收藏这段代码" onclick="code_favorites_do_favorite(this);return false;"><img class="star" src="./[JAVA]动态重新加载Class机制_files/icon_star.png" alt="收藏代码"><img class="spinner" src="./[JAVA]动态重新加载Class机制_files/spinner.gif" style="display:none"></a></div></div><ol start="1" class="dp-j"><li><span><span class="comment">//&nbsp;First,&nbsp;check&nbsp;if&nbsp;the&nbsp;class&nbsp;has&nbsp;already&nbsp;been&nbsp;loaded</span><span>&nbsp;&nbsp;</span></span></li><li><span>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Class&nbsp;c&nbsp;=&nbsp;findLoadedClass(name);&nbsp;&nbsp;</span></li><li><span>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="keyword">if</span><span>&nbsp;(c&nbsp;==&nbsp;</span><span class="keyword">null</span><span>)&nbsp;{&nbsp;&nbsp;</span></span></li><li><span>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="keyword">try</span><span>&nbsp;{&nbsp;&nbsp;</span></span></li><li><span>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="keyword">if</span><span>&nbsp;(parent&nbsp;!=&nbsp;</span><span class="keyword">null</span><span>)&nbsp;{&nbsp;&nbsp;</span></span></li><li><span>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;c&nbsp;=&nbsp;parent.loadClass(name,&nbsp;<span class="keyword">false</span><span>);&nbsp;&nbsp;</span></span></li><li><span>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;}&nbsp;<span class="keyword">else</span><span>&nbsp;{&nbsp;&nbsp;</span></span></li><li><span>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;c&nbsp;=&nbsp;findBootstrapClass0(name);&nbsp;&nbsp;</span></li><li><span>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;}&nbsp;&nbsp;</span></li><li><span>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;}&nbsp;<span class="keyword">catch</span><span>&nbsp;(ClassNotFoundException&nbsp;e)&nbsp;{&nbsp;&nbsp;</span></span></li><li><span>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="comment">//&nbsp;If&nbsp;still&nbsp;not&nbsp;found,&nbsp;then&nbsp;invoke&nbsp;findClass&nbsp;in&nbsp;order</span><span>&nbsp;&nbsp;</span></span></li><li><span>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="comment">//&nbsp;to&nbsp;find&nbsp;the&nbsp;class.</span><span>&nbsp;&nbsp;</span></span></li><li><span>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;c&nbsp;=&nbsp;findClass(name);&nbsp;&nbsp;</span></li><li><span>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;}&nbsp;&nbsp;</span></li><li><span>&nbsp;&nbsp;&nbsp;&nbsp;}&nbsp;&nbsp;</span></li></ol></div><pre name="code" class="java" style="display: none; " codeable_id="662620" codeable_type="Blog" source_url="http://vivisidea.iteye.com/blog/662620" pre_index="0" title="[JAVA]动态重新加载Class机制">// First, check if the class has already been loaded
+        Class c = findLoadedClass(name);
+        if (c == null) {
+        try {
+        if (parent != null) {
+            c = parent.loadClass(name, false);
+        } else {
+            c = findBootstrapClass0(name);
+        }
+        } catch (ClassNotFoundException e) {
+            // If still not found, then invoke findClass in order
+            // to find the class.
+            c = findClass(name);
+        }
+    }</pre>
+<br>&nbsp;&nbsp;&nbsp; 必须重写loadClass方法才能达到效果。
+<br>
+<br><strong>动态重新加载Class</strong>
+<br>&nbsp;&nbsp;&nbsp; Java内置的ClassLoader总会在加载一个Class之前检查这个Class是否已经被加载过，已经被加载过的Class不会加载第二次。因此要想重新加载Class，我们需要实现自己的ClassLoader。
+<br>&nbsp;&nbsp;&nbsp; 另外一个问题是，每个被加载的Class都需要被链接(link)，这是通过执行ClassLoader.resolve()来实现的，这个方法是 final的，因此无法重写。Resove()方法不允许一个ClassLoader实例link一个Class两次，因此，当你需要重新加载一个 Class的时候，你需要重新New一个你自己的ClassLoader实例。
+<br>&nbsp;&nbsp;&nbsp; 刚才说到一个Class不能被一个ClassLoader实例加载两次，但是可以被不同的ClassLoader实例加载，这会带来新的问题：
+<br><div class="dp-highlighter" id=""><div class="bar"><div class="tools">Java代码 <embed wmode="transparent" src="/javascripts/syntaxhighlighter/clipboard_new.swf" width="14" height="15" flashvars="clipboard=MyObject%20object%20%3D%20(MyObject)%0A%20%20%20%20myClassReloadingFactory.newInstance(%22com.jenkov.MyObject%22)%3B" quality="high" allowscriptaccess="always" type="application/x-shockwave-flash" pluginspage="http://www.macromedia.com/go/getflashplayer">&nbsp;<a href="javascript:void()" title="收藏这段代码" onclick="code_favorites_do_favorite(this);return false;"><img class="star" src="./[JAVA]动态重新加载Class机制_files/icon_star.png" alt="收藏代码"><img class="spinner" src="./[JAVA]动态重新加载Class机制_files/spinner.gif" style="display:none"></a></div></div><ol start="1" class="dp-j"><li><span><span>MyObject&nbsp;object&nbsp;=&nbsp;(MyObject)&nbsp;&nbsp;</span></span></li><li><span>&nbsp;&nbsp;&nbsp;&nbsp;myClassReloadingFactory.newInstance(<span class="string">"com.jenkov.MyObject"</span><span>);&nbsp;&nbsp;</span></span></li></ol></div><pre name="code" class="java" style="display: none; " codeable_id="662620" codeable_type="Blog" source_url="http://vivisidea.iteye.com/blog/662620" pre_index="1" title="[JAVA]动态重新加载Class机制">MyObject object = (MyObject)
+    myClassReloadingFactory.newInstance("com.jenkov.MyObject");</pre>
+<br>这段代码会导致一个ClassCastException，因为在一个Java应用中，Class是根据它的全名（包名+类名）和加载它的 ClassLoader来唯一标识的。在上面的代码中object对象对应的Class和newInstance返回的实例对应的Class是有区别的：
+<br><table class="bbcode"><tbody><tr><td> </td><td> 全名</td><td>ClassLoader实例</td></tr><tr><td>Object对象的Class</td><td>com.jenkov.MyObject&nbsp; </td><td>AppClassLoader实例</td></tr><tr><td>newInstance返回对象的Class</td><td>com.jenkov.MyObject</td><td>自定义ClassLoader实例</td></tr></tbody></table>
+<br>
+<br>&nbsp;&nbsp;&nbsp; 解决的办法是使用接口或者父类，只重新加载实现类或者子类即可。
+<br><div class="dp-highlighter" id=""><div class="bar"><div class="tools">Java代码 <embed wmode="transparent" src="/javascripts/syntaxhighlighter/clipboard_new.swf" width="14" height="15" flashvars="clipboard=MyObjectInterface%20object%20%3D%20(MyObjectInterface)%0A%20%20%20%20myClassReloadingFactory.newInstance(%22com.jenkov.MyObject%22)%3B%0A%0AMyObjectSuperclass%20object%20%3D%20(%20MyObjectSuperclass)%0A%20%20%20%20myClassReloadingFactory.newInstance(%22com.jenkov.MyObject%22)%3B" quality="high" allowscriptaccess="always" type="application/x-shockwave-flash" pluginspage="http://www.macromedia.com/go/getflashplayer">&nbsp;<a href="javascript:void()" title="收藏这段代码" onclick="code_favorites_do_favorite(this);return false;"><img class="star" src="./[JAVA]动态重新加载Class机制_files/icon_star.png" alt="收藏代码"><img class="spinner" src="./[JAVA]动态重新加载Class机制_files/spinner.gif" style="display:none"></a></div></div><ol start="1" class="dp-j"><li><span><span>MyObjectInterface&nbsp;object&nbsp;=&nbsp;(MyObjectInterface)&nbsp;&nbsp;</span></span></li><li><span>&nbsp;&nbsp;&nbsp;&nbsp;myClassReloadingFactory.newInstance(<span class="string">"com.jenkov.MyObject"</span><span>);&nbsp;&nbsp;</span></span></li><li><span>&nbsp;&nbsp;</span></li><li><span>MyObjectSuperclass&nbsp;object&nbsp;=&nbsp;(&nbsp;MyObjectSuperclass)&nbsp;&nbsp;</span></li><li><span>&nbsp;&nbsp;&nbsp;&nbsp;myClassReloadingFactory.newInstance(<span class="string">"com.jenkov.MyObject"</span><span>);&nbsp;&nbsp;</span></span></li></ol></div><pre name="code" class="java" style="display: none; " codeable_id="662620" codeable_type="Blog" source_url="http://vivisidea.iteye.com/blog/662620" pre_index="2" title="[JAVA]动态重新加载Class机制">MyObjectInterface object = (MyObjectInterface)
+    myClassReloadingFactory.newInstance("com.jenkov.MyObject");
+
+MyObjectSuperclass object = ( MyObjectSuperclass)
+    myClassReloadingFactory.newInstance("com.jenkov.MyObject");</pre>
+<br>
+<br>&nbsp;&nbsp;&nbsp; 在自己实现的ClassLoader中，当需要加载MyObjectInterface或者MyObjectSuperclass的时候，要代理给父 ClassLoader去加载。
+<br>
+<br>&nbsp;&nbsp;&nbsp; 实例代码就不贴了，可以去原作者网站上去看，动态重新加载Class可以做成当Class文件有修改的时候就重新加载(比如根据文件大小+修改时间或者算个文件md5值)。
+<br>
+  </div>
+
+  
+
+
+  <iframe src="./[JAVA]动态重新加载Class机制_files/794.htm" scrolling="no" width="468" height="60" frameborder="0"></iframe>
+  
+  <div id="bottoms" class="clearfix">
+    
+    <div id="share_weibo">分享到：
+      <a data-type="sina" href="javascript:;" title="分享到新浪微博"><img src="./[JAVA]动态重新加载Class机制_files/sina.jpg"></a>
+      <a data-type="qq" href="javascript:;" title="分享到腾讯微博"><img src="./[JAVA]动态重新加载Class机制_files/tec.jpg"></a>
+    </div>
+  </div>
+
+  <div class="blog_nav">
+    <div class="pre_next">
+      <a href="http://vivisidea.iteye.com/blog/663353" class="next" title="[Java]关于HashMap的多线程不安全">[Java]关于HashMap的多线程不安全</a>
+      |
+      <a href="http://vivisidea.iteye.com/blog/657013" class="pre" title="[LINUX] 一些比较好用的脚本收集">[LINUX] 一些比较好用的脚本收集</a>
+    </div>
+  </div>
+  <div class="blog_bottom">
+    <ul>
+      <li>2010-05-10 01:12</li>
+      <li>浏览 2667</li>
+      <li><a href="http://vivisidea.iteye.com/blog/662620#comments">评论(1)</a></li>
+      
+      
+      <li>分类:<a href="http://www.iteye.com/blogs/category/language">编程语言</a></li>      
+      <li class="last"><a href="http://www.iteye.com/wiki/blog/662620" target="_blank" class="more">相关推荐</a></li>
+    </ul>
+  </div>
+
+  <div class="blog_comment">
+    <h5>评论</h5>
+    <a id="comments" name="comments"></a>
+    <div id="bc1522639">
+  <div class="comment_title">
+    1 楼
+    <a href="http://beneo.iteye.com/" target="_blank" title="beneo">beneo</a>
+    2010-06-02&nbsp;&nbsp;
+    
+    
+  </div>
+  <div class="comment_content">http://www.iteye.com/topic/11<br><br>这个文章不错<br><br>然后你有区分 ClassLoader 和 Thread.getContextClassLoader么？？</div>
+</div>
+
+
+    
+    
+  </div>
+
+  <div class="blog_comment">
+    <h5>发表评论</h5>
+            <p style="text-align:center; margin-top:30px;margin-bottom:0px;"><a href="http://vivisidea.iteye.com/login" style="background-color:white;"> <img src="./[JAVA]动态重新加载Class机制_files/login_icon.png" style="vertical-align:middle; margin-right: 10px;"></a><a href="http://vivisidea.iteye.com/login">  您还没有登录,请您登录后再发表评论 </a></p>
+      </div>
+</div>
+
+
+<script type="text/javascript">
+  dp.SyntaxHighlighter.HighlightAll('code', true, true);
+
+  $$('#main .blog_content pre[name=code]').each(function(pre, index){ // blog content
+    var post_id = 662620;
+    var location = window.location;
+    source_url = location.protocol + "//" + location.host + location.pathname + location.search;
+    pre.writeAttribute('codeable_id', post_id);
+    pre.writeAttribute('codeable_type', "Blog");
+    pre.writeAttribute('source_url', source_url);
+    pre.writeAttribute('pre_index', index);
+    pre.writeAttribute('title', '[JAVA]动态重新加载Class机制');
+  });
+
+  fix_image_size($$('div.blog_content img'), 700);
+
+  function processComment() {
+    $$('#main .blog_comment > div').each(function(comment){// comment
+      var post_id = comment.id.substr(2);
+      $$("#"+comment.id+" pre[name=code]").each(function(pre, index){
+        var location = window.location;
+        source_url = location.protocol + "//" + location.host + location.pathname + location.search;
+        source_url += "#" + comment.id;
+        pre.writeAttribute('codeable_id', post_id);
+        pre.writeAttribute('codeable_type', "BlogComment");
+        pre.writeAttribute('source_url', source_url);
+        pre.writeAttribute('pre_index', index);
+        pre.writeAttribute('title', '[JAVA]动态重新加载Class机制');
+      });
+    });
+  }
+
+  function quote_comment(id) {
+    new Ajax.Request('/editor/quote', {
+      parameters: {'id':id, 'type':'BlogComment'},
+      onSuccess:function(response){editor.bbcode_editor.textarea.insertAfterSelection(response.responseText);
+        Element.scrollTo(editor.bbcode_editor.textarea.element);}
+    });
+  }
+
+  code_favorites_init();
+  processComment();
+  new WeiboShare({share_buttons: $('share_weibo'), img_scope: $('blog_content')});
+</script>
+
+
+
+
+        </div>
+
+        <div id="local">
+          <div class="local_top"></div>
+          <div id="blog_owner">
+  <div id="blog_owner_logo"><a href="http://vivisidea.iteye.com/"><img alt="weiqiang.yang的博客" class="logo" src="./[JAVA]动态重新加载Class机制_files/fc8e641d-9074-3ed0-a69e-e46c793392fe.jpeg" title="weiqiang.yang的博客: My Tech Disk"></a></div>
+  <div id="blog_owner_name">weiqiang.yang</div>
+</div>
+
+          <div id="blog_actions">
+            <ul>
+              <li>浏览: 30038 次</li>
+              <li>性别: <img alt="Icon_minigender_1" src="./[JAVA]动态重新加载Class机制_files/icon_minigender_1.gif" title="男"></li>
+              <li>来自: 杭州</li>
+              <li><img src="./[JAVA]动态重新加载Class机制_files/offline.gif"></li>
+              
+            </ul>
+          </div>
+          <div id="user_visits" class="clearfix">
+            <h5>最近访客 <span style="font-weight:normal;font-size:12px;padding-left:30px;"><a href="http://vivisidea.iteye.com/blog/user_visits">更多访客&gt;&gt;</a></span></h5>
+            
+              <div class="user_visit">
+                <div class="logo"><a href="http://dylinshi126.iteye.com/" target="_blank"><img alt="dylinshi126的博客" class="logo" src="./[JAVA]动态重新加载Class机制_files/user-logo-thumb.gif" title="dylinshi126的博客: "></a></div>
+                <div class="left"><a href="http://dylinshi126.iteye.com/" target="_blank" title="dylinshi126">dylinshi126</a></div>
+              </div>
+            
+              <div class="user_visit">
+                <div class="logo"><a href="http://qq224.iteye.com/" target="_blank"><img alt="qq224的博客" class="logo" src="./[JAVA]动态重新加载Class机制_files/user-logo-thumb.gif" title="qq224的博客: "></a></div>
+                <div class="left"><a href="http://qq224.iteye.com/" target="_blank" title="qq224">qq224</a></div>
+              </div>
+            
+              <div class="user_visit">
+                <div class="logo"><a href="http://zhuoyr.iteye.com/" target="_blank"><img alt="zhuoyr的博客" class="logo" src="./[JAVA]动态重新加载Class机制_files/0a62f86f-b1d0-3ddb-a0cd-d3c662aeb54b-thumb.jpg" title="zhuoyr的博客: "></a></div>
+                <div class="left"><a href="http://zhuoyr.iteye.com/" target="_blank" title="zhuoyr">zhuoyr</a></div>
+              </div>
+            
+              <div class="user_visit">
+                <div class="logo"><a href="http://xiaoyanger.iteye.com/" target="_blank"><img alt="xiaoyanger的博客" class="logo" src="./[JAVA]动态重新加载Class机制_files/1bf085e8-5ae9-3162-9be8-b98e3be3f770-thumb.gif" title="xiaoyanger的博客: 小样儿"></a></div>
+                <div class="left"><a href="http://xiaoyanger.iteye.com/" target="_blank" title="xiaoyanger">xiaoyanger</a></div>
+              </div>
+            
+          </div>
+
+          
+
+                      <div id="blog_menu">
+              <h5>文章分类</h5>
+              <ul>
+                <li><a href="http://vivisidea.iteye.com/">全部博客 (28)</a></li>
+                
+              </ul>
+            </div>
+            <div id="month_blogs">
+              <h5>社区版块</h5>
+              <ul>
+                <li><a href="http://vivisidea.iteye.com/blog/news">我的资讯</a> (0)</li>
+                <li>
+                  <a href="http://vivisidea.iteye.com/blog/post">我的论坛</a> (113)
+                </li>
+                <li><a href="http://vivisidea.iteye.com/blog/answered_problems">我的问答</a> (7)</li>
+              </ul>
+            </div>
+            <div id="month_blogs">
+              <h5>存档分类</h5>
+              <ul>
+                
+                  <li><a href="http://vivisidea.iteye.com/blog/monthblog/2012-02">2012-02</a> (4)</li>
+                
+                  <li><a href="http://vivisidea.iteye.com/blog/monthblog/2011-12">2011-12</a> (1)</li>
+                
+                  <li><a href="http://vivisidea.iteye.com/blog/monthblog/2011-11">2011-11</a> (2)</li>
+                
+                <li><a href="http://vivisidea.iteye.com/blog/monthblog_more">更多存档...</a></li>
+              </ul>
+            </div>
+            
+            
+
+            <div id="guest_books">
+              <h5>最新评论</h5>
+              <ul>
+                
+                <li>
+                  <a href="http://xiebo1983.iteye.com/" target="_blank" title="xiebo1983">xiebo1983</a>： 
+                  http://www.sqkoo.com/show/detai ...<br>
+                  <a href="http://vivisidea.iteye.com/blog/838653#bc2305156">mysql乱码问题解决方案备忘</a>
+                </li>
+                
+                <li>
+                  <a href="http://vivisidea.iteye.com/" target="_blank" title="weiqiang.yang">weiqiang.yang</a>： 
+                  man expect出来的文档太长了，简直就是一篇长篇论文，看 ...<br>
+                  <a href="http://vivisidea.iteye.com/blog/1396984#bc2242684">shell programming sheat sheet for myself</a>
+                </li>
+                
+                <li>
+                  <a href="http://vivisidea.iteye.com/" target="_blank" title="weiqiang.yang">weiqiang.yang</a>： 
+                  参数原来是这么处理的。。。
+#!/bin/bash
+SEC=0 ...<br>
+                  <a href="http://vivisidea.iteye.com/blog/1396984#bc2242239">shell programming sheat sheet for myself</a>
+                </li>
+                
+                <li>
+                  <a href="http://vivisidea.iteye.com/" target="_blank" title="weiqiang.yang">weiqiang.yang</a>： 
+                  #!/bin/bash
+
+INPUT=$1
+case $INP ...<br>
+                  <a href="http://vivisidea.iteye.com/blog/1396984#bc2242236">shell programming sheat sheet for myself</a>
+                </li>
+                
+                <li>
+                  <a href="http://vivisidea.iteye.com/" target="_blank" title="weiqiang.yang">weiqiang.yang</a>： 
+                  
+#!/bin/bash
+
+# $#    Number of ...<br>
+                  <a href="http://vivisidea.iteye.com/blog/1396984#bc2242231">shell programming sheat sheet for myself</a>
+                </li>
+                
+              </ul>
+            </div>
+
+            <div class="local_bottom"></div>
+          
+        </div>
+      </div>
+
+      <div id="footer" class="clearfix">
+        <div id="copyright">
+          <hr>
+          声明：ITeye文章版权属于作者，受法律保护。没有作者书面许可不得转载。若作者同意转载，必须以超链接形式标明文章原始出处和作者。<br>
+          © 2003-2014 ITeye.com.   All rights reserved.  [ 京ICP证110151号  京公网安备110105010620 ]
+        </div>
+      </div>
+    </div>
+    <script type="text/javascript">
+  document.write("<img src='http://stat.iteye.com/?url="+ encodeURIComponent(document.location.href) + "&referrer=" + encodeURIComponent(document.referrer) + "&user_id=' width='0' height='0' />");
+</script><img src="./[JAVA]动态重新加载Class机制_files/saved_resource" width="0" height="0">
+
+<script src="./[JAVA]动态重新加载Class机制_files/tracking.js" type="text/javascript"></script>
+
+    
+    
+  
+
+</body></html>

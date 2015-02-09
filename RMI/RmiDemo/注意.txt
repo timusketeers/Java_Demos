@@ -1,0 +1,4 @@
+
+CountServiceImpl01.class和CountServiceImpl02.class要先使用jdk工具rmic.exe生成
+
+stub存根,即就是要先生成CountServiceImpl01_stub.class和CountServiceImpl02_stub.class文件.
